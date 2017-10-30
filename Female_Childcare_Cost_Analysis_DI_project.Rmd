@@ -1,0 +1,267 @@
+---
+title: "Cost Estimate of Secondary Childcare Provided By Working Household Members"
+output: html_notebook
+---
+
+### Introduction and Goal
+
+While many countries provide extensive governmental financial support for the childcare institutions such as nurseries, kindergartens, school afterhours facilities, etc., in the US secondary childcare is the parents' responsibility in the majority of cases. 
+
+Yet it is clear that childcare requires a lot of time investment from at least one or both of the parents which either impedes their career growth or makes them postpone family planning till long.   
+
+Naturally, working professional parents could have contributed more to their businesses if some of those responsibilities were taken care of by specialized institutions subsidazied by government.   
+
+In this project, I will provide a rough estimation of the "cost" of in-house secondary childcare provided by a working professional and calculate the potential tax amount from that amount to comapre whetehr it could be theortically viable to afford childcare facilities based on that potential tax increase from substituted in-house caregiving. 
+
+### Dataset
+
+For this project, I am presently using the [**American Time Use Survey** dataset](https://www.bls.gov/tus/datafiles_0316.htm) that provides data collected in 2003-2016 for household time use including childcare along with other data about household members. 
+
+The dataset comprises a few data files focusing on different aspects of a household: 
+ 
+ * ATUS 2003-2016 Respondent file (zip) (12.5 MB) The Respondent file contains information about ATUS respondents, including their labor force status and earnings.
+ * ATUS 2003-2016 Roster file (zip) (2.4 MB) The Roster file contains information about household members and nonhousehold children (under 18) of ATUS respondents. It includes information such as age and sex.
+ * ATUS 2003-2016 Activity file (zip) (60.2 MB) The Activity file contains information about how ATUS respondents spent their diary day. It includes information such as activity codes, activity start and stop times, and locations. Because Activity codes have changed somewhat between 2003 and 2015, this file uses activity codes that appear in the 2003-2016 ATUS Coding Lexicon (PDF).
+ * ATUS 2003-2016 Activity summary file (zip) (11.5 MB) The Activity summary file contains information about the total time each ATUS respondent spent doing each activity on the diary day. Because Activity codes have changed somewhat between 2003 and 2016, this file uses activity codes that appear in the 2003-2016 ATUS Coding Lexicon (PDF)
+ * ATUS 2003-2016 Who file (zip) (15.1 MB) The Who file includes codes that indicate who was present during each activity.
+ * ATUS-CPS 2003-2016 file (zip) 
+
+and totalling more that 100MB of data. 
+
+Although the data comes in the pre-processed format, it involves substantial handling complexity:       * the data comes in multiple files
+ * hundreds of encoded variables are used to decsribe various aspects of data. They are defined in 3 separately provided dictionaries, e.g., [ATUS-CPS 2003-2016 Data Dictionary](https://www.bls.gov/tus/atuscpscodebk0316.pdf) not corresponding to the data files.
+
+Additionally, to complete the planned estimation, I will also use the tax data per state which is a smaller effort for potential tax increase estimation per state.  
+
+### Results 
+
+At this phase, I was able to accomplish the analysis of the female contributors to the secondary childcare in a household. Interesting results included variation by time invested daily in childcare depending on the levels of education: 
+
+ * female caregivers without High School diploma tend to invest twice less time than female caregivers with higher levels of education.
+
+I also estimated the "cost equivalents"`*` for the time spent for household chilcare per day.  `*The "cost equivalent" is the amount of money that could be earned at work for the same time.` 
+
+ * the highest cost was produced by female caregivers with Bachelor Degree with rough estimate of 420 USD$/day
+ * interestingly, MSs and PhDs equivalents were around 270$ and 250$ per day resp. with approximately same amount of time involved as by BSs
+ * the lowest estimates were for groups who didn't finish highschool avergaing ~75$/day. 
+
+
+### Future Work 
+
+ * Refinement of the analysis using finer defined variables 
+ * Similar analysis for male caregivers including time invested in childcare and education level 
+ * Analysis of the time involved for single caregivers 
+ * Analysi sof dynamics through time before the 2008 economic crisis, during the crisis years, and in the subsequent years up to 2016.  
+
+
+##Code:  
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+### Loading Data
+
+```{r}
+respondents <- read.csv("./atusresp_0316/atusresp_0316.dat")
+roster <- read.csv("./atusrost_0316/atusrost_0316.dat")
+activities <- read.csv("./atusact_0316/atusact_0316.dat")
+act_sum <- read.csv("./atussum_0316/atussum_0316.dat")
+who <- read.csv("./atuswho_0316/atuswho_0316.dat")
+```
+
+### Notes on Some Variables Used
+
+**Gender**
+TESEX Edited: sex Roster File, Activity Summary File
+1 Male
+2 Female
+
+**Childcare**
+TRTOHHCHILD  Total nonwork-related time respondent spent with own household
+children < 18 (in minutes)
+
+**Employment**
+TELFS Edited: labor force status Repondent File, Activity Summary 
+1 Employed - at work
+2 Employed - absent
+3 Unemployed - on layoff
+4 Unemployed - looking
+5 Not in labor force
+
+TRDPFTPT Full time or part time employment status of respondent Respondent File, Activity Summary File
+1 Employed
+2 Not employed
+
+TESPEMPNOT Edited: employment status of spouse or unmarried partner Respondent File, Activity Summary File
+1 Employed
+2 Not employed
+
+TRSPFTPT Full time or part time employment status of spouse or unmarried
+partner
+Respondent File, Activity Summary File
+
+**Earnings**
+TRERNHLY Hourly earnings at main job (2 implied decimals) Respondent File
+
+#### Looking at the data
+
+```{r}
+dim(respondents)
+#names(respondents)
+```
+
+```{r}
+dim(roster)
+names(roster)
+```
+
+```{r}
+dim(who)
+names(who)
+```
+
+Turning respondents IDs (`TUCASEID` field) to factors
+```{r}
+respondents$TUCASEID <- factor(respondents$TUCASEID) 
+roster$TUCASEID <- factor(roster$TUCASEID) 
+activities$TUCASEID <- factor(activities$TUCASEID) 
+act_sum$TUCASEID<-factor(act_sum$TUCASEID)
+who$TUCASEID <- factor(who$TUCASEID) 
+```
+
+
+### Female Main Respondent with Children in a Household
+
+Get all households where the main respondent was female (18 & 19 for "self")
+```{r}
+roster_ids_with_women_self = roster[roster$TESEX==2 & (roster$TERRP==18 | roster$TERRP== 19), c("TUCASEID", "TULINENO", "TERRP", "TEAGE", "TESEX")]
+```
+
+Of those, find the households with children (our working dataframe): 
+```{r}
+hh_with_children_woman_self = respondents[respondents$TUCASEID %in% roster_ids_with_women_self$TUCASEID &  respondents$TRCHILDNUM >0, ]
+
+dim(hh_with_children_woman_self)
+```
+
+Briging in the Education Level variable (PEEDUCA) from another dataframe:
+```{r}
+#PEEDUCA Edited: what is the highest level of school you have completed or the
+#highest degree you have received? ATUS-CPS File, Activity Summary File
+hh_with_children_woman_self$PEEDUCA <- act_sum$PEEDUCA[match(hh_with_children_woman_self$TUCASEID, act_sum$TUCASEID)]
+```
+
+There are some households with children that stated 0 time spent with their children on that day. It might need a closer look although it's possibel that some households don't spend time with children on certain days (the day of the ATUS interview) . Currently, it's taken into the average.   
+```{r}
+dim(hh_with_children_woman_self[hh_with_children_woman_self$TRTOHHCHILD==0,])
+```
+
+The original education level variable `PEEDUCA` has too many levels of granularity (17 levels):
+
+31 Less than 1st grade
+32 1st, 2nd, 3rd, or 4th grade
+33 5th or 6th grade
+34 7th or 8th grade
+35 9th grade
+36 10th grade
+37 11th grade
+38 12th grade - no diploma
+39 High school graduate - diploma or equivalent (GED)
+40 Some college but no degree
+41 Associate degree - occupational/vocational
+42 Associate degree - academic program
+43 Bachelor's degree (BA, AB, BS, etc.)
+44 Master's degree (MA, MS, MEng, MEd, MSW, etc.)
+45 Professional school degree (MD, DDS, DVM, etc.)
+46 Doctoral degree (PhD, EdD, etc.)
+
+Such granularity is defnitely unnecessary for the current project, I'm merging them into 6 levels: 
+
+ * "<HS" less than 10 grades
+ * "HS-" some high school, no diploma
+ * "HS" high school diploma, some college
+ * "BS" academis associate degree, BS
+ * "MS,MMD" Masters or Professional school degree
+ * "PhD+" PhD and higher. 
+```{r}
+hh_with_children_woman_self$PEEDUCAGEN <- hh_with_children_woman_self$PEEDUCA
+
+hh_with_children_woman_self$PEEDUCAGEN[hh_with_children_woman_self$PEEDUCAGEN %in% c(31,32,33,34,35)] <- "<HS"
+hh_with_children_woman_self$PEEDUCAGEN[hh_with_children_woman_self$PEEDUCAGEN %in% c(36,37,38)] <- "HS-"
+hh_with_children_woman_self$PEEDUCAGEN[hh_with_children_woman_self$PEEDUCAGEN %in% c(39,40,41)] <- "HS"
+hh_with_children_woman_self$PEEDUCAGEN[hh_with_children_woman_self$PEEDUCAGEN %in% c(41,42,43)] <- "BS"
+hh_with_children_woman_self$PEEDUCAGEN[hh_with_children_woman_self$PEEDUCAGEN %in% c(44,45)] <- "MS,MMD"
+hh_with_children_woman_self$PEEDUCAGEN[hh_with_children_woman_self$PEEDUCAGEN %in% c(46)] <- "PhD+"
+#ordering categorical levels of education
+hh_with_children_woman_self$PEEDUCAGEN <- factor(hh_with_children_woman_self$PEEDUCAGEN, levels = c("<HS", "HS-", "HS", "BS", "MS,MMD", "PhD+"))
+levels(hh_with_children_woman_self$PEEDUCAGEN)
+```
+
+### Estimating Average Childcare Time Per Day
+
+```{r}
+ggplot(hh_with_children_woman_self, aes(x=factor(hh_with_children_woman_self$PEEDUCAGEN), y=hh_with_children_woman_self$TRTOHHCHILD, fill=factor(hh_with_children_woman_self$PEEDUCAGEN)))+
+  stat_boxplot( aes(hh_with_children_woman_self$PEEDUCAGEN, hh_with_children_woman_self$TRTOHHCHILD), 
+    geom='errorbar', linetype=1, width=0.5)+  #whiskers
+  geom_boxplot( aes(hh_with_children_woman_self$PEEDUCAGEN, hh_with_children_woman_self$TRTOHHCHILD),outlier.shape=1) +  
+  geom_jitter(alpha=0.015) +
+  stat_summary(fun.y=mean, geom="point", size=2) + 
+  stat_summary(fun.data = mean_se, geom = "errorbar")+
+  scale_y_continuous(breaks=scales::pretty_breaks(8)) +
+  ggtitle("Average Childcare Time Spent By Female Caregiver By Education Level") +
+  labs(x="Female Caregiver Education Level", y="Time (min/day)") +
+  theme(legend.position="none")
+```
+
+
+```{r}
+hh_with_children_woman_self %>%
+    group_by(PEEDUCAGEN) %>%
+    summarise(avg_time_spent_w_children = mean(TRTOHHCHILD)) %>%
+    arrange(desc(avg_time_spent_w_children))
+
+```
+
+```{r}
+#assigning average time spent with children per education level 
+hh_with_children_woman_self$TRTOHHCHILDAVG <- ave(hh_with_children_woman_self$TRTOHHCHILD,hh_with_children_woman_self$PEEDUCAGEN)
+```
+
+### Estimating Cost Equivalent Of Childcare
+
+Normalizing the average hourly pay value: needs more investgation on what units are used. 
+```{r}
+hh_with_children_woman_self$TRERNHLYNORM <- hh_with_children_woman_self$TRERNHLY/10
+```
+
+```{r}
+hh_with_children_woman_self %>%
+    group_by(PEEDUCAGEN) %>%
+    summarise(avg_earnings = mean(TRERNHLYNORM)) %>%
+    arrange(desc(avg_earnings))
+
+```
+
+```{r}
+#assigning average hrly earnings per education level 
+hh_with_children_woman_self$TRERNHLYNORMDAVG <- ave(hh_with_children_woman_self$TRERNHLYNORM,hh_with_children_woman_self$PEEDUCAGEN)
+
+```
+
+Estimating the potential cost of childcare (CC) on average. TRTOHHCHILDAVG is provided in minute, turning into hrs.  
+```{r}
+hh_with_children_woman_self <- hh_with_children_woman_self %>% mutate(POTENTIALCCLOSSAVG = TRERNHLYNORMDAVG * TRTOHHCHILDAVG/60)
+```
+
+```{r}
+ggplot(hh_with_children_woman_self, aes(x=factor(hh_with_children_woman_self$PEEDUCAGEN), y=hh_with_children_woman_self$POTENTIALCCLOSSAVG, fill=factor(hh_with_children_woman_self$PEEDUCAGEN)))+ 
+  stat_summary(fun.y="mean", geom="bar") +
+  geom_jitter(alpha=0.03) +
+  #coord_flip() +
+  scale_y_continuous(breaks=scales::pretty_breaks(8)) +
+  ggtitle("Estimated 'Cost' of Childcare By Household Female Caregiver Education level") +
+  labs(x="Female Caregiver Education Level", y="Estimated Childcare Cost (USD$/day)") +
+  theme(legend.position="none")
+```

@@ -1,0 +1,380 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+#plot(cars)
+
+respondents <- read.csv("./atusresp_0316/atusresp_0316.dat")#, header=TRUE)
+roster <- read.csv("./atusrost_0316/atusrost_0316.dat")#, header=TRUE)
+activities <- read.csv("./atusact_0316/atusact_0316.dat")#, headers=TRUE)
+act_sum <- read.csv("./atussum_0316/atussum_0316.dat")#, headers=TRUE)
+
+```
+```{r}
+who <- read.csv("./atuswho_0316/atuswho_0316.dat")
+```
+
+
+**Gender**
+TESEX Edited: sex Roster File, Activity Summary File
+1 Male
+2 Female
+
+
+**Childcare var's**
+TRTOHHCHILD  Total nonwork-related time respondent spent with own household
+children < 18 (in minutes)
+
+TRTNOCHILD Total nonwork-related time respondent spent with nonown children
+< 18 (in minutes) Respondent File
+
+
+
+
+TEABSRSN Edited: what was the main reason you were absent from your job
+last week?  Respondent File
+6 Childcare problems
+8 Maternity/paternity leave
+
+
+TRTCC Total time spent during diary day providing secondary childcare for
+household and own nonhousehold children < 13 (in minutes)
+Respondent File
+
+TRTCC_LN Total time spent during activity providing secondary child care for
+household and own nonhousehold children < 13 (in minutes)
+Activity File
+
+TRTCCTOT Total time spent during diary day providing secondary childcare for
+all children < 13 (in minutes)
+Respondent Fil
+
+TRTCCTOT_LN Total time spent during activity providing secondary childcare for all
+children < 13 (in minutes)
+Activity File
+
+**Employment**
+
+TELFS Edited: labor force status Respondent File, Activity Summary 
+1 Employed - at work
+2 Employed - absent
+3 Unemployed - on layoff
+4 Unemployed - looking
+5 Not in labor force
+
+TRSPFTPT Full time or part time employment status of spouse or unmarried
+partner
+Respondent File, Activity Summary File
+
+TESPEMPNOT Edited: employment status of spouse or unmarried partner Respondent File, Activity Summary File
+1 Employed
+2 Not employed
+
+TESPUHRS Edited: usual hours of work per week of spouse or unmarried partner Respondent File
+
+
+TRDPFTPT Full time or part time employment status of respondent Respondent File, Activity Summary File
+1 Employed
+2 Not employed
+
+
+**Earnings**
+
+TRERNHLY Hourly earnings at main job (2 implied decimals) Respondent File
+
+TEERN Edited: total weekly overtime earnings (2 implied decimals) Respondent File
+
+TEERNH1O Edited: excluding overtime pay, tips, and commissions, what is your
+hourly rate of pay on your main job? (2 implied decimals)
+Respondent File
+
+TEERNH2 Edited: excluding overtime pay, tips, and commissions, what is your
+hourly rate of pay on your main job? (2 implied decimals)
+
+
+
+
+
+**Eldercare**
+TRTEC Total time spent providing eldercare (in minutes) Respondent File
+
+
+```{r}
+dim(respondents)
+names(respondents)
+#summary(respondents)
+```
+```{r}
+respondents[1,]
+```
+
+
+```{r}
+dim(roster)
+names(roster)
+```
+
+```{r}
+dim(who)
+names(who)
+```
+
+
+```{r}
+respondents$TUCASEID <- factor(respondents$TUCASEID) 
+roster$TUCASEID <- factor(roster$TUCASEID) 
+activities$TUCASEID <- factor(activities$TUCASEID) 
+who$TUCASEID <- factor(who$TUCASEID) 
+```
+```{r}
+act_sum$TUCASEID<-factor(act_sum$TUCASEID)
+```
+
+```{r}
+anyDuplicated(respondents$TUCASEID)
+anyDuplicated(roster$TUCASEID)
+```
+## Female Main Resondent with Children in Houshold
+Get all households where the main respondent was female (18 & 19 for "self")
+```{r}
+roster_ids_with_women_self = roster[roster$TESEX==2 & (roster$TERRP==18 | roster$TERRP== 19), c("TUCASEID", "TULINENO", "TERRP", "TEAGE", "TESEX")]
+
+```
+Sanity checking: 
+```{r}
+dim(roster_ids_with_women_self)
+#summary(roster_ids_with_women_self)
+anyDuplicated(roster_ids_with_women_self)
+roster_ids_with_women_self[1:5]
+length(roster_ids_with_women_self[roster_ids_with_women_self$TERRP==19, "TUCASEID"])
+roster_ids_with_women_self[roster_ids_with_women_self$TERRP==19, "TUCASEID"][1:5]
+roster_ids_with_women_self[roster_ids_with_women_self$TUCASEID==20030100015941,c("TUCASEID", "TULINENO", "TERRP", "TEAGE", "TESEX")]
+```
+
+
+```{r}
+hh_with_children_woman_self = respondents[respondents$TUCASEID %in% roster_ids_with_women_self$TUCASEID &  respondents$TRCHILDNUM >0, ]
+
+#TRHHCHILD
+
+dim(hh_with_children)
+hh_with_children_woman_self[1,]#$TELFS
+#TELFS
+```
+
+```{r}
+
+#PEEDUCA Edited: what is the highest level of school you have completed or the
+#highest degree you have received?
+#ATUS-CPS File, Activity Summary File
+dim(hh_with_children_woman_self)
+hh_with_children_woman_self$PEEDUCA <- act_sum$PEEDUCA[match(hh_with_children_woman_self$TUCASEID, act_sum$TUCASEID)]
+dim(hh_with_children_woman_self)
+
+```
+```{r}
+hh_with_children_woman_self$PEEDUCA <-factor(hh_with_children_woman_self$PEEDUCA)
+```
+
+```{r}
+dim(hh_with_children_woman_self[hh_with_children_woman_self$TRTOHHCHILD==0,])
+
+```
+
+
+```{r}
+class(hh_with_children_woman_self$PEEDUCA)
+hist(hh_with_children_woman_self$PEEDUCA, hh_with_children_woman_self$TUYEAR<2009)
+
+```
+
+
+```{r}
+library(dplyr)
+hh_with_children_woman_self %>%
+    group_by(PEEDUCA) %>%
+    summarise(avg_time_spent_w_children = mean(TRTOHHCHILD)) %>%
+    arrange(desc(avg_time_spent_w_children))
+
+```
+
+```{r}
+library(ggplot2)
+ggplot(hh_with_children_woman_self, aes(x=factor(hh_with_children_woman_self$PEEDUCA), y=hh_with_children_woman_self$TRTOHHCHILD, fill=factor(hh_with_children_woman_self$PEEDUCA))) + 
+  stat_summary(fun.y="mean", geom="bar") +
+  geom_jitter(alpha=0.03) +
+  #coord_flip() +
+  scale_y_continuous(breaks=scales::pretty_breaks(8)) +
+  ggtitle("Average Time spent bt females with own children, by Education level") +
+  labs(x="Education Level", y="Time (min/day)") +
+  theme(legend.position="none")
+```
+
+
+```{r}
+
+hh_with_children_woman_self_eduf = cbind(hh_with_children_woman_self)
+#hh_with_children_woman_self_eduf$PEEDUCA <- factor(hh_with_children_woman_self_eduf$PEEDUCA)
+
+hh_with_children_woman_self_eduf$PEEDUCAGEN <- hh_with_children_woman_self_eduf$PEEDUCA
+
+hh_with_children_woman_self_eduf$PEEDUCAGEN[hh_with_children_woman_self_eduf$PEEDUCAGEN %in% c(31,32,33,34,35)] <- "<HS"
+hh_with_children_woman_self_eduf$PEEDUCAGEN[hh_with_children_woman_self_eduf$PEEDUCAGEN %in% c(36,37,38)] <- "HS-"
+hh_with_children_woman_self_eduf$PEEDUCAGEN[hh_with_children_woman_self_eduf$PEEDUCAGEN %in% c(39,40,41)] <- "HS"
+hh_with_children_woman_self_eduf$PEEDUCAGEN[hh_with_children_woman_self_eduf$PEEDUCAGEN %in% c(41,42,43)] <- "BS"
+hh_with_children_woman_self_eduf$PEEDUCAGEN[hh_with_children_woman_self_eduf$PEEDUCAGEN %in% c(44,45)] <- "MS,MMD"
+hh_with_children_woman_self_eduf$PEEDUCAGEN[hh_with_children_woman_self_eduf$PEEDUCAGEN %in% c(46)] <- "PhD+"
+hh_with_children_woman_self_eduf$PEEDUCAGEN <- factor(hh_with_children_woman_self_eduf$PEEDUCAGEN, levels = c("<HS", "HS-", "HS", "BS", "MS,MMD", "PhD+"))
+levels(hh_with_children_woman_self_eduf$PEEDUCAGEN)
+```
+
+```{r}
+library(ggplot2)
+ggplot(hh_with_children_woman_self_eduf, aes(x=factor(hh_with_children_woman_self_eduf$PEEDUCAGEN), y=hh_with_children_woman_self_eduf$TRTOHHCHILD, fill=factor(hh_with_children_woman_self_eduf$PEEDUCAGEN))) + 
+  stat_summary(fun.y="mean", geom="bar") +
+  geom_jitter(alpha=0.03) +
+  #coord_flip() +
+  scale_y_continuous(breaks=scales::pretty_breaks(8)) +
+  ggtitle("Average Time spent by females with own children, by Education level") +
+  labs(x="Education Level", y="Time (min/day)") +
+  theme(legend.position="none")
+```
+
+```{r}
+hh_with_children_woman_self_eduf %>%
+    group_by(PEEDUCAGEN) %>%
+    summarise(avg_time_spent_w_children = mean(TRTOHHCHILD)) %>%
+    arrange(desc(avg_time_spent_w_children))
+
+```
+
+```{r}
+#assigning average time spent with children per education level 
+hh_with_children_woman_self_eduf$TRTOHHCHILDAVG <- ave(hh_with_children_woman_self_eduf$TRTOHHCHILD,hh_with_children_woman_self_eduf$PEEDUCAGEN)
+
+```
+
+```{r}
+hh_with_children_woman_self_eduf %>%
+    group_by(PEEDUCA) %>%
+    summarise(avg_earnings = mean(TRERNWA)) %>%
+    arrange(desc(avg_earnings))
+
+```
+
+```{r}
+hh_with_children_woman_self_eduf$TRERNHLYNORM <- hh_with_children_woman_self_eduf$TRERNHLY/10
+```
+
+```{r}
+hh_with_children_woman_self_eduf %>%
+    group_by(PEEDUCAGEN) %>%
+    summarise(avg_earnings = mean(TRERNHLYNORM)) %>%
+    arrange(desc(avg_earnings))
+
+```
+
+```{r}
+#assigning average hrly earnings per education level 
+hh_with_children_woman_self_eduf$TRERNHLYNORMDAVG <- ave(hh_with_children_woman_self_eduf$TRERNHLYNORM,hh_with_children_woman_self_eduf$PEEDUCAGEN)
+
+```
+
+
+```{r}
+hh_with_children_woman_self_eduf <- hh_with_children_woman_self_eduf %>% mutate(POTENTIALCCLOSSAVG = TRERNHLYNORMDAVG * TRTOHHCHILDAVG/60)
+```
+
+```{r}
+ggplot(hh_with_children_woman_self_eduf, aes(x=factor(hh_with_children_woman_self_eduf$PEEDUCAGEN), y=hh_with_children_woman_self_eduf$POTENTIALCCLOSSAVG, fill=factor(hh_with_children_woman_self_eduf$PEEDUCAGEN))) + 
+  stat_summary(fun.y="mean", geom="bar") +
+  geom_jitter(alpha=0.03) +
+  #coord_flip() +
+  scale_y_continuous(breaks=scales::pretty_breaks(8)) +
+  ggtitle("Average 'Cost' of Self-Provided Childcare, by Female Caregiver Education level") +
+  labs(x="Female Caregiver Education Level", y="Self-Provided Childcare Cost (USD$/day)") +
+  theme(legend.position="none")
+```
+
+
+
+
+
+
+```{r}
+hh_with_children_woman_self_eduf <- df %>%
+    filter(DRG.code==233)
+
+```
+
+
+```{r}
+
+hh_with_children_woman_self[1, c("TELFS", "TRERNHLY", "TRERNWA" )]
+```
+
+```{r}
+
+
+```
+
+
+
+## Refinements through activities (not always filled out)  # optional 
+```{r}
+#activities[]
+ids_women_self_cc_3 = who[who$TUCASEID==20030101030074, who$TUACTIVITY_N==3, who$TRWHONA==0, who$TUWHO_CODE %in% c(18, 19), c("TUCASEID")]
+
+```
+```{r}
+ids_women_self_cc_3 = who[who$TUCASEID %in% hh_with_children_woman_self$TUCASEID & who$TUACTIVITY_N==3 & who$TRWHONA==0 & who$TUWHO_CODE %in% c(18, 19), c("TUCASEID")]
+
+# No of female main respondents who took part in caring activities 47623 
+length(ids_women_self_cc_3)
+
+#Some sanity checking: 
+ids_women_self_cc_3[1:2]
+who[who$TUCASEID==ids_women_self_cc_3[1],]
+roster[roster$TUCASEID==ids_women_self_cc_3[1],]
+```
+Finding time spent on child caring activities 
+
+```{r}
+
+act_sum[act_sum$TUCASEID==ids_women_self_cc_3[1],]
+
+#levels(roster_ids_with_women_self$TUCASEID)
+#length(levels(roster_ids_with_women_self$TUCASEID))
+#class(roster_ids_with_women_self$TUCASEID)
+```
+
+
+# Female relative to the main respondent  
+
+Get all households where the there was a female relative to the main respondent (20=spouse, 21=partner, 25=sister, 26=other realtive, 28=Housemate/roommate, 29=Roomer/boarder)
+```{r}
+roster_ids_with_women_other=roster[roster$TESEX==2 & (roster$TERRP %in% c(20, 21)), c("TUCASEID", "TULINENO", "TERRP", "TEAGE", "TESEX")]
+
+#Sanity checking: 
+dim(roster_ids_with_women_other)
+#summary(roster_ids_with_women_self)
+anyDuplicated(roster_ids_with_women_other)
+roster_ids_with_women_other[1:5]
+length(roster_ids_with_women_other[roster_ids_with_women_other$TERRP==21, "TUCASEID"])
+roster_ids_with_women_other[roster_ids_with_women_other$TERRP==21, "TUCASEID"][1:5]
+#roster_ids_with_women_other[roster_ids_with_women_other$TUCASEID==20030100015941,c("TUCASEID", #"TULINENO", "TERRP", "TEAGE", "TESEX")]
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
